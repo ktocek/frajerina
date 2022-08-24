@@ -1,10 +1,59 @@
-int query = entityManager.createNativeQuery("INSERT INTO rating (ident,game, username, rating, rated_on) SELECT ?,?, ?, ?, ? WHERE NOT EXISTS (SELECT username FROM rating WHERE username = ?); UPDATE rating SET rating = ? WHERE EXISTS (SELECT username FROM rating WHERE username = ?) AND username = ?")
-                .setParameter(1, 100)
-                .setParameter(2, game)
-                .setParameter(3, username)
-                .setParameter(4, 5)
-                .setParameter(5, new Date())
-                .setParameter(6, username)
-                .setParameter(7, 5)
-                .setParameter(8, username)
-                .setParameter(9, username).executeUpdate();
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Override
+    public void setRating(Rating rating) {
+        Rating ratingToWrite = null;
+
+        try {
+            ratingToWrite = (Rating) entityManager.createQuery("select r from Rating r where r.username = :username and r.game = :game")
+                    .setParameter("username",rating.getUsername())
+                    .setParameter("game",rating.getGame())
+                    .getSingleResult();
+
+            ratingToWrite.setRating(rating.getRating());
+            ratingToWrite.setRatedOn(new Date());
+
+        } catch (NoResultException e){
+            //ratingToWrite = new Rating(rating.getGame(),rating.getUsername(),rating.getRating(),new Date());
+            entityManager.persist(rating);
+        }
+
+//        int query = entityManager.createNativeQuery("INSERT INTO rating (ident, game, username, rating, rated_on) SELECT ?,?, ?, ?, ? WHERE NOT EXISTS (SELECT username FROM rating WHERE username = ?); UPDATE rating SET rating = ? WHERE EXISTS (SELECT username FROM rating WHERE username = ?) AND username = ?")
+//                .setParameter(1, 101)
+//                .setParameter(2, rating.getGame())
+//                .setParameter(3, rating.getUsername())
+//                .setParameter(4, rating.getRating())
+//                .setParameter(5, rating.getRatedOn())
+//                .setParameter(6, rating.getUsername())
+//                .setParameter(7, rating.getRating())
+//                .setParameter(8, rating.getUsername())
+//                .setParameter(9, rating.getUsername()).executeUpdate();
+    }
+
+    @Override
+    public int getAverageRating(String game) {
+        try {
+            return ((Number) entityManager.createQuery("select avg(rating) from Rating  where game = :game")
+                    .setParameter("game", game)
+                    .getSingleResult()).intValue();
+        }catch (NoResultException e){
+            return 0;
+        }
+    }
+
+    @Override
+    public int getRating(String game, String username) {
+            try {
+                return ((Number )entityManager.createQuery("select rating from Rating where game = :game and username = :username")
+                        .setParameter("game", game)
+                        .setParameter("username", username).getSingleResult()).intValue();
+            }catch (NoResultException e){
+                return 0;
+            }
+    }
+
+    @Override
+    public void reset() {
+        entityManager.createNativeQuery("delete from rating").executeUpdate();
+    }
